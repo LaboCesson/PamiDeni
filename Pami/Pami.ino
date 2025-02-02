@@ -4,6 +4,8 @@
 
 LibPami pami;
 
+short angleChange[] = {0, 0, 0, 0};
+
 
 // Selection d'axe de Gyroscope.
 // VALEUR    RÉSULTAT
@@ -15,7 +17,7 @@ LibPami pami;
 //
 // 0x03      Mesure effectuée
 //           Sur l'axe Z.
-char axis = 0x02;
+char axis = 0x01;
 
 
 // Sélection de direction.
@@ -25,7 +27,7 @@ char axis = 0x02;
 //
 // -0x01     Le robot va avancer
 //           en arrière.
-char direction = 0x01;
+char direction = -0x01;
 
 
 // Selection de vitesse initiale.
@@ -36,7 +38,7 @@ char direction = 0x01;
 // paramètre "direction" [LIGNE 29]
 // Recommandé:
 // V ∈ [-0x20 : 0x40]
-char baseSpeed = 0x20;
+char baseSpeed = 0x64;
 
 
 // Selection du cooldown entre
@@ -48,7 +50,7 @@ char baseSpeed = 0x20;
 //
 // Si pour un test:
 // V ∈ [0x1e : 0x32]
-short cooldown = 0x32;
+short cooldown = 0x00;
 
 
 // Facteur de division
@@ -56,10 +58,11 @@ short cooldown = 0x32;
 // Du robot pour les angles.
 // Valeurs conseillées:
 // X ∈ [-0x02 : 0x0a]
-char divisionFactor = 0x05;
+char divisionFactor = 0x01;
 
 
 float offset = 0;  // Corrected declaration
+unsigned long startTime;
 
 
 void setup() {
@@ -83,6 +86,8 @@ void setup() {
 
   pami.afficheur.displayString("done");
   delay(2000);
+  pami.gyro.display(true);
+  
 
   pami.chrono.display(true);
 
@@ -113,22 +118,24 @@ void setup() {
   }
 
     offset = 0 - initialAngle; // Calcule ne nombre à soustraire des angles mesurés pour avoir un écart de l'angle initial.
+
+    startTime = millis();
 }
 
 void loop() {
   pami.gestion();
 
-  Serial.print("# Gyroscope #");
-  Serial.print("  Axe X=");
-  Serial.print(pami.gyro.getAngle(GYROSCOPE_AXIS_X));
-  Serial.print(", Axe Y=");
-  Serial.print(pami.gyro.getAngle(GYROSCOPE_AXIS_Y));
-  Serial.print(", Axe Z=");
-  Serial.println(pami.gyro.getAngle(GYROSCOPE_AXIS_Z));
+  //Serial.print("# Gyroscope #");
+  //Serial.print("  Axe X=");
+  //Serial.print(pami.gyro.getAngle(GYROSCOPE_AXIS_X));
+  //Serial.print(", Axe Y=");
+  //Serial.print(pami.gyro.getAngle(GYROSCOPE_AXIS_Y));
+  //Serial.print(", Axe Z=");
+  //Serial.println(pami.gyro.getAngle(GYROSCOPE_AXIS_Z));
 
   correctDependingOnAngle();
 
-  delay(cooldown);
+  //delay(cooldown);
 }
 
 void correctDependingOnAngle() {
@@ -153,12 +160,16 @@ void correctDependingOnAngle() {
       return;
   }
 
-  Serial.print("Moteur Gauche : ");
-  Serial.print(direction * (baseSpeed - angle / divisionFactor));
+  unsigned long time = millis() - startTime;
+  unsigned short step = (time / 1000) % 4;
 
-  Serial.print("       Moteur Droit : ");
-  Serial.println(direction * (baseSpeed + angle / divisionFactor));
 
-  pami.moteur.moteurGauche(direction * (baseSpeed - angle / divisionFactor));
-  pami.moteur.moteurDroit(direction * (baseSpeed + angle / divisionFactor));
+  //Serial.print("Moteur Gauche : ");
+  //Serial.print(max(-100, min(100, direction * (baseSpeed - (angle + angleChange[step]) / divisionFactor))));
+
+  //Serial.print("       Moteur Droit : ");
+  //Serial.println(max(-100, min(100, direction * (baseSpeed + (angle + angleChange[step]) / divisionFactor))));
+
+  pami.moteur.moteurGauche(max(-100, min(100, direction * (baseSpeed - (angle + angleChange[step]) / divisionFactor))));
+  pami.moteur.moteurDroit(max(-100, min(100,direction * (baseSpeed + (angle + angleChange[step]) / divisionFactor))));
 }
