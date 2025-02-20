@@ -4,6 +4,17 @@
 
 LibPami pami;
 
+//short angleChange[] = {90, 0, 0, -90};
+
+bool zbeub = false;
+bool coOverride = false;
+bool awaitingDistance = false;
+char targetAngleOffset = 0;
+
+constexpr char slopeMin = 0x05;
+constexpr char slopeMax = 0x0a;  
+
+char SINE = 0;
 
 // Selection d'axe de Gyroscope.
 // VALEUR    RÉSULTAT
@@ -15,7 +26,27 @@ LibPami pami;
 //
 // 0x03      Mesure effectuée
 //           Sur l'axe Z.
-char axis = 0x02;
+char axis = 0x01;
+
+
+// Selection d'action lors que le
+// Robot va finir l'ascention de
+// La pente de la rampe de truc.
+// VALEUR    RÉSULTAT
+// 0x01      Lors que le robot
+//           atteint la fin de la
+//           pente, il va s'arrêter.
+// 0x02      Lors que le robot
+//           atteint la fin de la
+//           pente, il va changer
+//           l'angle vers lequel
+//           s'orienter à 90°.
+// 0x03      Lors que le robot
+//           atteint la fin de la
+//           pente, il va changer
+//           l'angle vers lequel
+//           s'orienter à -90°.
+char actionSelector = 0x05;
 
 
 // Sélection de direction.
@@ -25,7 +56,7 @@ char axis = 0x02;
 //
 // -0x01     Le robot va avancer
 //           en arrière.
-char direction = 0x01;
+char direction = -0x01;
 
 
 // Selection de vitesse initiale.
@@ -35,8 +66,8 @@ char direction = 0x01;
 // Si mauvaise direction, changer le
 // paramètre "direction" [LIGNE 29]
 // Recommandé:
-// V ∈ [-0x20 : 0x40]
-char baseSpeed = 0x20;
+// V ∈ [0x20 : 0x40]
+char baseSpeed = 0x30;
 
 
 // Selection du cooldown entre
@@ -48,7 +79,7 @@ char baseSpeed = 0x20;
 //
 // Si pour un test:
 // V ∈ [0x1e : 0x32]
-short cooldown = 0x32;
+short cooldown = 0x00;
 
 
 // Facteur de division
@@ -56,10 +87,20 @@ short cooldown = 0x32;
 // Du robot pour les angles.
 // Valeurs conseillées:
 // X ∈ [-0x02 : 0x0a]
-char divisionFactor = 0x05;
+char divisionFactor = 0x01;
+
+
+// Vitesse maximale
+// Vitesse que la correction
+// Ne pourra pas dépasser.
+// Sert à éviter des drifts
+// Et des crashs dans des
+// Murs de merde.
+char maxSpeed = 0xff;
 
 
 float offset = 0;  // Corrected declaration
+unsigned long startTime;
 
 
 void setup() {
@@ -83,6 +124,8 @@ void setup() {
 
   pami.afficheur.displayString("done");
   delay(2000);
+  pami.gyro.display(true);
+  
 
   pami.chrono.display(true);
 
@@ -113,22 +156,29 @@ void setup() {
   }
 
     offset = 0 - initialAngle; // Calcule ne nombre à soustraire des angles mesurés pour avoir un écart de l'angle initial.
+
+    startTime = millis();
 }
 
 void loop() {
   pami.gestion();
 
-  Serial.print("# Gyroscope #");
-  Serial.print("  Axe X=");
-  Serial.print(pami.gyro.getAngle(GYROSCOPE_AXIS_X));
-  Serial.print(", Axe Y=");
-  Serial.print(pami.gyro.getAngle(GYROSCOPE_AXIS_Y));
-  Serial.print(", Axe Z=");
-  Serial.println(pami.gyro.getAngle(GYROSCOPE_AXIS_Z));
+  //Serial.print("# Gyroscope #");
+  //Serial.print("  Axe X=");
+  //Serial.print(pami.gyro.getAngle(GYROSCOPE_AXIS_X));
+  //Serial.print(", Axe Y=");
+  //Serial.print(pami.gyro.getAngle(GYROSCOPE_AXIS_Y));
+  //Serial.print(", Axe Z=");
+  //Serial.println(pami.gyro.getAngle(GYROSCOPE_AXIS_Z));
 
+  conditionnalCorection();
   correctDependingOnAngle();
+  onEdge();
+  //nonMandatoryActions();
 
-  delay(cooldown);
+  SINE = (char)(sin(millis() / 1000.0) * 127);
+
+  //delay(cooldown);
 }
 
 void correctDependingOnAngle() {
@@ -153,12 +203,152 @@ void correctDependingOnAngle() {
       return;
   }
 
-  Serial.print("Moteur Gauche : ");
-  Serial.print(direction * (baseSpeed - angle / divisionFactor));
+  //unsigned long time = millis() - startTime;
+  //unsigned short step = (time / 1000) % 4;
 
-  Serial.print("       Moteur Droit : ");
-  Serial.println(direction * (baseSpeed + angle / divisionFactor));
 
-  pami.moteur.moteurGauche(direction * (baseSpeed - angle / divisionFactor));
-  pami.moteur.moteurDroit(direction * (baseSpeed + angle / divisionFactor));
+  //Serial.print("Moteur Gauche : ");
+  //Serial.print(max(-100, min(100, direction * (baseSpeed - (angle + angleChange[step]) / divisionFactor))));
+
+  //Serial.print("       Moteur Droit : ");
+  //Serial.println(max(-100, min(100, direction * (baseSpeed + (angle + angleChange[step]) / divisionFactor))));
+
+  if (!coOverride){
+    //pami.moteur.moteurGauche(max(-100, min(100, direction * (baseSpeed - (angle + angleChange[step]) / divisionFactor))));
+    //pami.moteur.moteurDroit(max(-100, min(100,direction * (baseSpeed + (angle + angleChange[step]) / divisionFactor))));
+    
+    //Serial.print("Moteur Gauche : ");
+    //Serial.print(max(-100, min(100, direction * (baseSpeed - (angle + angleChange[step]) / divisionFactor))));
+    //Serial.print("       Moteur Droit : ");
+    //Serial.println(max(-100, min(100, direction * (baseSpeed + (angle + angleChange[step]) / divisionFactor))));
+
+
+    //Serial.print("Moteur Gauche : ");
+    //Serial.print(max(-100, min(100, direction * (baseSpeed - (angle + targetAngleOffset) / divisionFactor))));
+    //Serial.print("       Moteur Droit : ");
+    //Serial.println(max(-100, min(100, direction * (baseSpeed + (angle + targetAngleOffset) / divisionFactor))));
+
+    char mg = direction * (baseSpeed - (angle + targetAngleOffset) / divisionFactor);
+    char md = direction * (baseSpeed + (angle + targetAngleOffset) / divisionFactor);
+    
+
+    //pami.moteur.moteurGauche(mg);
+    //pami.moteur.moteurDroit(md);
+
+    pami.moteur.moteurGauche(clampValues(mg, maxSpeed * -1, maxSpeed));
+    pami.moteur.moteurDroit(clampValues(md, maxSpeed * -1, maxSpeed));
+
+    
+  }
+}
+
+
+void conditionnalCorection(){
+  char angle = abs(pami.gyro.getAngle(GYROSCOPE_AXIS_Y));
+
+  if (slopeMin < angle && angle < slopeMax && !zbeub){
+    //Serial.print("conditionnalCorrection has deteted a slope, with an angle of ");
+    //Serial.print(angle);
+    //Serial.println("°.");
+    zbeub = true;
+  }
+
+  if (zbeub && angle < slopeMin) {
+    switch (actionSelector) {
+      case 0x01:
+        // Action 0x01 correspond à l'arrêt du robot.
+        pami.moteur.moteurGauche(0);
+        pami.moteur.moteurDroit(0);
+        if (!coOverride){
+          //Serial.println("conditionnalCorrection has Overriden speed controls.");
+          coOverride = true;
+        }
+        break;
+
+
+      case 0x02:
+        // Action 0x02 correspond à une rotation de 90°
+
+        targetAngleOffset = 90;
+        //Serial.println("conditionnalCorrection has set targetAngleOffset to 90. The robot wil now correct its trajectory to head towards the initial angle + 90");
+        zbeub = false;
+        break;
+
+
+      case 0x03:
+        // Action 0x03 correspond à une rotation de -90°
+
+        targetAngleOffset = -90;
+        //Serial.println("conditionnalCorrection has set targetAngleOffset to -90. The robot wil now correct its trajectory to head towards the initial angle -90");
+        zbeub = false;
+        break;
+
+
+      case 0x04:
+        // Action 0x02 correspond à une rotation de 90°, puis de l'arrêt sur le bord de la table.
+
+        targetAngleOffset = 90;
+        //Serial.println("conditionnalCorrection has set targetAngleOffset to 90. The robot wil now correct its trajectory to head towards the initial angle + 90");
+        zbeub = false;
+
+        //Serial.println("conditionnalCorrection has set awaitingDistance to TRUE. Robot will now stop when it reaches an edge of the table.");
+        awaitingDistance = true;
+
+        baseSpeed = 20;
+
+        break;
+
+
+      case 0x05:
+        // Action 0x03 correspond à une rotation de -90°, puis de l'arrêt sur le bord de la table.
+
+        targetAngleOffset = -90;
+        //Serial.println("conditionnalCorrection has set targetAngleOffset to -90. The robot wil now correct its trajectory to head towards the initial angle -90");
+        zbeub = false;
+
+        //Serial.println("conditionnalCorrection has set awaitingDistance to TRUE. Robot will now stop when it reaches an edge of the table.");
+        awaitingDistance = true;
+
+        baseSpeed = 20;
+
+        break;
+  
+
+      default:
+        Serial.println("Failed to identify the selected action. Please refer to [LINE ---] to select the desired action.");
+        zbeub = false;
+        return;
+    }
+  }
+}
+
+void onEdge() {
+  if (!awaitingDistance) {
+    return;
+  }
+
+  short distance = 0; // OBTENSION DE LA DISTANCE AVEC LE ULTRASON ICI!
+  distance = pami.ultrason.getDistance();
+
+  Serial.print("Distance mesurée par le ultrason truc bizare pas cramé cette fois: ");
+  Serial.println(distance);
+
+  if (distance >= 50){ // Hauteur réelle: 55mm (5.5cm). Changer si besoin pour correspondre aux millimètres!!
+    pami.moteur.moteurGauche(0);
+    pami.moteur.moteurDroit(0);
+
+    //coOverride = true;
+
+    //Serial.println("onEdge has overriten the speeds, and taken the lead of speed control.");
+    //Serial.println("onEdge has stopped the robot. It will now longer move until it is restarted.");
+  }
+} 
+
+void nonMandatoryActions(){
+  // DEFINIR ICI TOUTES LES ACTIONS POUR LE ROBOT.
+  // UTILISER LA VALEUR SINE POUR QUELQUE CHOSE QUI CHANGE EN CONTINU.
+}
+
+char clampValues(char v, char mn, char mx) {
+  return min(max(v, mn), mx);
 }
