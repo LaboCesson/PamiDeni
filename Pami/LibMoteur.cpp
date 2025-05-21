@@ -25,8 +25,8 @@ LibMoteur::LibMoteur(unsigned char pinEna, unsigned char pinIn1, unsigned char p
 void LibMoteur::setPwmMode(bool pwmMode) { m_pwmMode = pwmMode; }
 
 
-#define PERIODE_GESTION_MOTEUR  5 ///< Durée en ms d'un pas
-#define NB_PAS_GESTION_MOTEUR   5 ///< Nombre de pas de reglage de vitesse
+#define PERIODE_GESTION_MOTEUR  1 ///< Durée en ms d'un pas
+#define NB_PAS_GESTION_MOTEUR   10 ///< Nombre de pas de reglage de vitesse
 
 void LibMoteur::gestion(void) {
   if( m_pwmMode == true ) return;

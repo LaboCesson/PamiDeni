@@ -38,9 +38,9 @@ void LibGyroscope::begin(void) {
   unsigned char dmpStatus = calibrate();
 
   if (dmpStatus != 0) {
-    Serial.print(F("DMP Initialization failed (code ")); //Print the error code
+    Serial.print(("DMP Initialization failed (code ")); //Print the error code
     Serial.print(dmpStatus);
-    Serial.println(F(")"));
+    Serial.println((")"));
     // 1 = initial memory load failed
     // 2 = DMP configuration updates failed
     return;

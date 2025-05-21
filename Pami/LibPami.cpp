@@ -56,6 +56,6 @@ void LibPami::gestion(void) {
   moteur.gestion();
   afficheur.gestion();
   gyro.gestion();
-  chrono.gestion();
+  //chrono.gestion(); /* Removed chrono because I dont need it anyway, and so it doesnt waste any resources */
 }
 
